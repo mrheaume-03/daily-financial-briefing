@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Financial Briefing — {{ date }}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: #eef0f4;
+      color: #1a1a2e;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ══════════════════════════════════════════
+       MASTHEAD
+    ══════════════════════════════════════════ */
+    .masthead {
+      background: #0f2540;
+      color: #fff;
+      padding: 1.6rem 2.5rem 1.3rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .masthead-left .kicker {
+      font-size: 0.62rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #60a5fa;
+      margin-bottom: 0.3rem;
+    }
+
+    .masthead-left h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .masthead-left h1 span { color: #60a5fa; }
+
+    .masthead-right { text-align: right; }
+    .masthead-right .date-lg { font-size: 1.05rem; font-weight: 600; color: #e2e8f0; }
+    .masthead-right .gen-time { font-size: 0.72rem; color: #94a3b8; margin-top: 0.2rem; }
+
+    .masthead-rule {
+      height: 3px;
+      background: linear-gradient(90deg, #1e40af 0%, #0891b2 50%, #059669 100%);
+    }
+
+    /* ══════════════════════════════════════════
+       STATS BAR  (key numbers from articles)
+    ══════════════════════════════════════════ */
+    .stats-bar {
+      background: #1a3a5c;
+      padding: 0.75rem 2rem;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .stats-bar::-webkit-scrollbar { display: none; }
+
+    .stat-pill {
+      flex: 1;
+      min-width: 100px;
+      text-align: center;
+      padding: 0.4rem 0.9rem;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-pill:last-child { border-right: none; }
+    .stat-pill .sv { font-size: 1.15rem; font-weight: 700; color: #f0f9ff; line-height: 1; }
+    .stat-pill .sl { font-size: 0.58rem; letter-spacing: 1.5px; text-transform: uppercase; color: #93c5fd; margin-top: 0.12rem; }
+
+    /* ══════════════════════════════════════════
+       MARKET TICKER CARDS  (SPY / QQQ / DOW)
+    ══════════════════════════════════════════ */
+    .markets-section {
+      background: #0f2540;
+      padding: 0 2rem 1.2rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .markets-label {
+      width: 100%;
+      font-size: 0.58rem;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #475569;
+      padding-top: 0.9rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 0.2rem;
+      color: #64748b;
+    }
+
+    .market-card {
+      flex: 1;
+      min-width: 200px;
+      background: #162032;
+      border-radius: 10px;
+      padding: 1rem 1.2rem 0.7rem;
+      border-top: 3px solid #334155;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .market-card.up   { border-top-color: #16a34a; }
+    .market-card.down { border-top-color: #dc2626; }
+
+    .market-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.3rem;
+    }
+
+    .market-symbol {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: 0.5px;
+    }
+
+    .market-name {
+      font-size: 0.65rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .market-price {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f0f9ff;
+      line-height: 1;
+      margin: 0.25rem 0;
+    }
+
+    .market-change {
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+    }
+
+    .market-card.up   .market-change { color: #4ade80; }
+    .market-card.down .market-change { color: #f87171; }
+
+    .chart-wrap {
+      height: 55px;
+      position: relative;
+    }
+
+    /* ══════════════════════════════════════════
+       PAGE CONTENT
+    ══════════════════════════════════════════ */
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.4rem 1.5rem 2rem;
+    }
+
+    /* ══════════════════════════════════════════
+       HERO — EXECUTIVE SUMMARY
+    ══════════════════════════════════════════ */
+    .hero {
+      background: #fff;
+      border-top: 4px solid #0f2540;
+      border-radius: 0 0 10px 10px;
+      padding: 1.6rem 2rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .hero .section-label { color: #0f2540; border-bottom-color: #e2e8f0; }
+    .section-label .icon { font-size: 1rem; }
+
+    .hero-bullets {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.3rem 2.5rem;
+      list-style: none;
+    }
+
+    .hero-bullets li {
+      font-size: 0.93rem;
+      line-height: 1.65;
+      color: #1e293b;
+      padding: 0.4rem 0 0.4rem 1.3rem;
+      position: relative;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .hero-bullets li:last-child { border-bottom: none; }
+    .hero-bullets li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: #1e40af;
+      font-size: 0.8rem;
+      top: 0.5rem;
+    }
+
+    /* ══════════════════════════════════════════
+       3-COLUMN GRID
+    ══════════════════════════════════════════ */
+    .sections-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-flow: column;
+      grid-template-rows: auto auto;
+      gap: 1.2rem;
+      margin-bottom: 1.2rem;
+    }
+
+    /* ══════════════════════════════════════════
+       SECTION CARDS
+    ══════════════════════════════════════════ */
+    .section-card {
+      background: #fff;
+      border-radius: 10px;
+      border-left: 4px solid #cbd5e1;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+      padding: 1.3rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cat-fed       { border-left-color: #1e40af; }
+    .cat-liquidity { border-left-color: #1e40af; }
+    .cat-white     { border-left-color: #d97706; }
+    .cat-geo       { border-left-color: #dc2626; }
+    .cat-earnings  { border-left-color: #7c3aed; }
+    .cat-economic  { border-left-color: #059669; }
+    .cat-macro     { border-left-color: #0891b2; }
+
+    .section-card .section-label { border-bottom-color: #f1f5f9; }
+    .cat-fed .section-label,
+    .cat-liquidity .section-label { color: #1e40af; }
+    .cat-white .section-label     { color: #d97706; }
+    .cat-geo .section-label       { color: #dc2626; }
+    .cat-earnings .section-label  { color: #7c3aed; }
+    .cat-economic .section-label  { color: #059669; }
+    .cat-macro .section-label     { color: #0891b2; }
+
+    .section-bullets { list-style: none; flex: 1; }
+
+    .section-bullets li {
+      font-size: 0.87rem;
+      line-height: 1.65;
+      color: #334155;
+      padding: 0.38rem 0 0.38rem 1.2rem;
+      position: relative;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .section-bullets li:last-child { border-bottom: none; }
+    .section-bullets li::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      font-size: 1rem;
+      top: 0.35rem;
+      font-weight: bold;
+    }
+
+    .cat-fed       .section-bullets li::before,
+    .cat-liquidity .section-bullets li::before { color: #1e40af; }
+    .cat-white     .section-bullets li::before { color: #d97706; }
+    .cat-geo       .section-bullets li::before { color: #dc2626; }
+    .cat-earnings  .section-bullets li::before { color: #7c3aed; }
+    .cat-economic  .section-bullets li::before { color: #059669; }
+    .cat-macro     .section-bullets li::before { color: #0891b2; }
+
+    /* ══════════════════════════════════════════
+       FULL-WIDTH SECTION (Macro / last)
+    ══════════════════════════════════════════ */
+    .section-full {
+      background: #fff;
+      border-radius: 10px;
+      border-left: 4px solid #0891b2;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+      padding: 1.3rem 1.5rem;
+      margin-bottom: 1.2rem;
+    }
+    .section-full .section-label { color: #0891b2; border-bottom-color: #f1f5f9; }
+    .section-full-bullets {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 0 2.5rem;
+    }
+    .section-full-bullets li {
+      font-size: 0.87rem;
+      line-height: 1.65;
+      color: #334155;
+      padding: 0.38rem 0 0.38rem 1.2rem;
+      position: relative;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .section-full-bullets li:last-child { border-bottom: none; }
+    .section-full-bullets li::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: #0891b2;
+      font-size: 1rem;
+      top: 0.35rem;
+      font-weight: bold;
+    }
+
+    /* ══════════════════════════════════════════
+       SOURCE TAGS (inline badges in bullets)
+    ══════════════════════════════════════════ */
+    .source-tag {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 3px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .no-news { font-size: 0.85rem; color: #94a3b8; font-style: italic; }
+
+    /* ══════════════════════════════════════════
+       SOURCES SECTION (open by default)
+    ══════════════════════════════════════════ */
+    .sources-section {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .sources-header {
+      padding: 0.9rem 1.5rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #475569;
+      border-bottom: 2px solid #f1f5f9;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sources-grid {
+      padding: 1rem 1.5rem 1.2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 0.1rem 1.5rem;
+    }
+
+    .source-link {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      padding: 0.28rem 0;
+      border-bottom: 1px dotted #e2e8f0;
+      color: #1e293b;
+      text-decoration: none;
+      transition: color 0.1s;
+      overflow: hidden;
+    }
+    .source-link:hover { color: #1e40af; }
+    .source-link:hover .sl-title { text-decoration: underline; }
+
+    .sl-badge {
+      flex-shrink: 0;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    .sl-title {
+      font-size: 0.82rem;
+      color: #334155;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ══════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════ */
+    .footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 1000px) {
+      .sections-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-auto-flow: row;
+        grid-template-rows: unset;
+      }
+    }
+    @media (max-width: 650px) {
+      .sections-grid { grid-template-columns: 1fr; }
+      .masthead { padding: 1.1rem 1.1rem; }
+      .masthead-left h1 { font-size: 1.5rem; }
+      .page { padding: 0.9rem; }
+      .markets-section { padding: 0 1rem 1rem; }
+    }
+    @media print {
+      body { background: #fff; }
+      .sections-grid { grid-template-columns: repeat(2,1fr); grid-auto-flow: row; }
+      .sources-section { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ MASTHEAD ══ -->
+<div class="masthead">
+  <div class="masthead-left">
+    <div class="kicker">Daily Financial Briefing &nbsp;·&nbsp; Market Intelligence</div>
+    <h1>The <span>Daily</span> Briefing</h1>
+  </div>
+  <div class="masthead-right">
+    <div class="date-lg">{{ date }}</div>
+    <div class="gen-time">Generated {{ generated_at }} &nbsp;·&nbsp; {{ model }}</div>
+  </div>
+</div>
+<div class="masthead-rule"></div>
+
+<!-- ══ STATS BAR (key numbers from articles) ══ -->
+{% if stats %}
+<div class="stats-bar">
+  {% for s in stats %}
+  <div class="stat-pill">
+    <div class="sv">{{ s.value }}</div>
+    <div class="sl">{{ s.label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ══ MARKET TICKER CARDS ══ -->
+{% if market_data %}
+<div class="markets-section">
+  <div class="markets-label">📈 &nbsp;Markets at a Glance</div>
+  {% for key, m in market_data.items() %}
+  <div class="market-card {{ m.direction }}" id="mc-{{ loop.index }}">
+    <div class="market-card-top">
+      <div>
+        <div class="market-symbol">{{ m.symbol }}</div>
+        <div class="market-name">{{ m.name }}</div>
+      </div>
+    </div>
+    <div class="market-price">{{ m.price_fmt }}</div>
+    <div class="market-change">{{ m.pct_fmt }}&nbsp; {{ m.change_fmt }}</div>
+    <div class="chart-wrap">
+      <canvas id="chart-{{ loop.index }}"></canvas>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ══ PAGE CONTENT ══ -->
+<div class="page">
+
+  <!-- HERO: Executive Summary -->
+  {% if sections %}
+  {% set hero = sections[0] %}
+  <div class="hero">
+    <div class="section-label">
+      <span class="icon">📋</span>{{ hero.title }}
+    </div>
+    {% if hero.bullets %}
+    <ul class="hero-bullets">
+      {% for b in hero.bullets %}
+      <li>{{ b | highlight_sources }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="no-news">No summary available.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- 3-COLUMN GRID: sections 2–7 -->
+  {% if sections|length > 2 %}
+  <div class="sections-grid">
+    {% for section in sections[1:-1] %}
+    {% set t = section.title | upper %}
+    {% if 'FEDERAL' in t or 'RESERVE' in t %}{% set cat='cat-fed' %}{% set icon='🏦' %}
+    {% elif 'LIQUIDITY' in t %}{% set cat='cat-liquidity' %}{% set icon='💵' %}
+    {% elif 'WHITE' in t or 'FISCAL' in t %}{% set cat='cat-white' %}{% set icon='🏛️' %}
+    {% elif 'GEOPOLIT' in t or 'WAR' in t %}{% set cat='cat-geo' %}{% set icon='⚔️' %}
+    {% elif 'EARNINGS' in t or 'GUIDANCE' in t %}{% set cat='cat-earnings' %}{% set icon='📊' %}
+    {% elif 'ECONOMIC' in t or 'DATA' in t %}{% set cat='cat-economic' %}{% set icon='📈' %}
+    {% else %}{% set cat='cat-macro' %}{% set icon='🌐' %}{% endif %}
+    <div class="section-card {{ cat }}">
+      <div class="section-label"><span class="icon">{{ icon }}</span>{{ section.title }}</div>
+      {% if section.bullets %}
+      <ul class="section-bullets">
+        {% for b in section.bullets %}
+        <li>{{ b | highlight_sources }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="no-news">No significant developments.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- FULL-WIDTH: last section (Macro Trends) -->
+  {% if sections|length > 1 %}
+  {% set last = sections[-1] %}
+  <div class="section-full">
+    <div class="section-label"><span class="icon">🌐</span>{{ last.title }}</div>
+    {% if last.bullets %}
+    <ul class="section-full-bullets">
+      {% for b in last.bullets %}
+      <li>{{ b | highlight_sources }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="no-news">No significant developments.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- SOURCES (open, always visible) -->
+  {% if sources %}
+  {% set total_links = sources | count_articles %}
+  {% if total_links > 0 %}
+  <div class="sources-section">
+    <div class="sources-header">
+      🔗 &nbsp;Source Articles &nbsp;·&nbsp; {{ total_links }} links
+    </div>
+    <div class="sources-grid">
+      {% for cat, articles in sources.items() %}
+        {% for article in articles %}
+          {% if article.link %}
+          <a class="source-link" href="{{ article.link }}" target="_blank" rel="noopener">
+            <span class="sl-badge">{{ article.source }}</span>
+            <span class="sl-title">{{ article.title }}</span>
+          </a>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <div class="footer">
+    The Daily Briefing &nbsp;·&nbsp; {{ date }} &nbsp;·&nbsp;
+    Synthesized by Claude AI from public RSS feeds &nbsp;·&nbsp;
+    <em>Not financial advice.</em>
+  </div>
+</div>
+
+<!-- ══ SPARKLINE CHARTS ══ -->
+{% if market_data %}
+<script>
+(function() {
+  var data = {{ market_data | tojson }};
+  var idx = 1;
+  for (var key in data) {
+    var m = data[key];
+    var color = m.direction === 'up' ? '#16a34a' : '#dc2626';
+    var fill  = m.direction === 'up' ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)';
+    var ctx = document.getElementById('chart-' + idx);
+    if (!ctx) { idx++; continue; }
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: m.times,
+        datasets: [{
+          data: m.prices,
+          borderColor: color,
+          borderWidth: 2,
+          fill: true,
+          backgroundColor: fill,
+          pointRadius: 0,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: { display: false, grace: '5%' }
+        }
+      }
+    });
+    idx++;
+  }
+})();
+</script>
+{% endif %}
+
+</body>
+</html>

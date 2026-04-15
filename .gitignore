@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.egg-info/
+
+# Newsletter output (generated files, not source)
+newsletters/
+
+# IDE
+.cursor/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
