@@ -263,6 +263,13 @@ def build_prompt_content(categorized: dict) -> str:
 def call_claude_api(raw_content: str) -> str:
     client = anthropic.Anthropic()
     today  = datetime.now().strftime("%A, %B %d, %Y")
+    monday_note = (
+        "\n\nIMPORTANT — Today is Monday: Several days of news have accumulated since "
+        "Friday's close. Ensure you cover major geopolitical, economic, and market-moving "
+        "events from Saturday and Sunday throughout the relevant sections. Weekend context "
+        "is critical for traders starting the week."
+        if "Monday" in today else ""
+    )
 
     system_prompt = f"""You are a senior financial journalist and market analyst producing a premium daily briefing for sophisticated investors and traders. Today is {today}.
 
@@ -294,7 +301,7 @@ FORMATTING RULES:
 - Write time references as "this morning," "late yesterday," "earlier today" relative to {today}
 - Tone: authoritative, direct, zero fluff — think Bloomberg Terminal briefing
 
-OUTPUT FORMAT: Return the STATS line first, then the newsletter content using the section headers above. No preamble, no closing remarks."""
+OUTPUT FORMAT: Return the STATS line first, then the newsletter content using the section headers above. No preamble, no closing remarks.{monday_note}"""
 
     message = client.messages.create(
         model=ANTHROPIC_MODEL,
@@ -437,6 +444,12 @@ def main():
     print("  DAILY FINANCIAL NEWSLETTER GENERATOR")
     print(f"  {datetime.now().strftime('%A, %B %d, %Y  %I:%M %p')}")
     print("=" * 60)
+
+    # Widen article lookback on Mondays to capture weekend events
+    if datetime.now().strftime("%A") == "Monday":
+        global MAX_ARTICLE_AGE_HOURS
+        MAX_ARTICLE_AGE_HOURS = 72  # Fri evening → Mon 8:20 AM ≈ 60h; 72h is a safe buffer
+        print("\n  [Monday mode] Article lookback extended to 72 hours to cover the weekend.")
 
     # 1. Fetch market data (SPY, QQQ, Dow)
     print("\n[1/5] Fetching market data...")

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Generates a daily financial market briefing at 8:30 AM on weekdays.</Description>
+    <Description>Generates a daily financial market briefing at 8:20 AM on weekdays.</Description>
     <Author>mrhea</Author>
   </RegistrationInfo>
   <Triggers>
     <CalendarTrigger>
-      <StartBoundary>2026-04-16T08:30:00</StartBoundary>
+      <StartBoundary>2026-04-15T08:20:00</StartBoundary>
       <Enabled>true</Enabled>
       <ScheduleByWeek>
         <WeeksInterval>1</WeeksInterval>
